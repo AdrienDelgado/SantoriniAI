@@ -7,39 +7,7 @@ import pyglet
 from MiniMax import MiniMaxAgent
 from HumanPlayer import HumanAgent
 
-#__________________________________
-building_pixel_row = [105, 216, 331, 446, 559]
-building_pixel_column = [106, 218, 333, 450, 561]
-player_offset_per_level = [(20, 20),(20, 25),(35, 15),(38, 38)]
-
-def get_tile_by_click(x, y, board):
-    row = 0
-    column = 0
-    for i in range(5):
-        if x >= building_pixel_column[i]:
-            column += 1
-        else:
-            break
-    column -=1
-    for j in range(5):
-        if y >= building_pixel_row[j]:
-            row += 1
-        else:
-            break
-    row -=1
-    return [row, column, board[row][column][1]]
-#__________________________________
-
-image_board = pyglet.resource.image('images/board.webp')
-image_level_1 = pyglet.resource.image('images/level1_annotated.png')
-image_level_2 = pyglet.resource.image('images/level2_annotated.png')
-image_level_3 = pyglet.resource.image('images/level3_annotated.png')
-image_level_4 = pyglet.resource.image('images/level4.png')
-image_player_green = pyglet.resource.image('images/player_green.png')
-image_player_blue = pyglet.resource.image('images/player_blue.png')
 icon = pyglet.image.load('images/player_1.png')
-levels = [None, image_level_1, image_level_2, image_level_3, image_level_4]
-players = [image_player_green, image_player_blue]
 
 class GameState(pyglet.window.Window):
     def __init__(self, config):
@@ -49,7 +17,9 @@ class GameState(pyglet.window.Window):
         self.num_players = 2
 
         # players
+        player_colors = ['green', 'blue']
         self.players = [Player(config, policy_type=config['Game']['agent_{}'.format(i)], player_number=i) for i in range(self.num_players)]
+        self.player_names = ["{} ({})".format(config['Game']['agent_{}_name'.format(i)], player_colors[i]) for i in range(self.num_players)]
         self.player_set = set(range(self.num_players))
         self.player_positions = [None for _ in range(self.num_players)]
         self.winner = None
@@ -68,7 +38,7 @@ class GameState(pyglet.window.Window):
         # UI
         self.set_caption("Place the players")
         self.set_icon(icon)
-        self.set_size(image_board.width, image_board.height)
+        self.set_size(768, 768)
 
     def start_game(self, players):
         """
@@ -80,35 +50,14 @@ class GameState(pyglet.window.Window):
             position = player.choose_starting_position(self.board) # choose starting position
             self.board[position[0]][position[1]][0] = player_number # update board
             self.player_positions[player_number] = position # update internally stored position
-
-    def print_board(self):
-        spriteList = [pyglet.sprite.Sprite(img=image_board)]
-        for row in range(5):
-            for column in range(5):
-                level = self.board[row][column][1]
-                if level != 0:
-                    sprite = sprite = pyglet.sprite.Sprite(img=levels[level])
-                    sprite.y = building_pixel_row[row]
-                    sprite.x = building_pixel_row[column]
-                    spriteList.append(sprite)
-                if self.board[row][column][0] != None:
-                    sprite = sprite = pyglet.sprite.Sprite(img=players[self.board[row][column][0]])
-                    sprite.y = building_pixel_row[row] + player_offset_per_level[level][0]
-                    sprite.x = building_pixel_row[column] + player_offset_per_level[level][1]
-                    spriteList.append(sprite)
-        return spriteList
     
     def update_caption(self):
-        if self.current_player == 0:
-            player = "Green player"
-        else:
-            player = "Blue player"
-        caption = "{}: {}".format(player, self.turn_type)
+        caption = "{}: {}".format(self.player_names[self.current_player], self.turn_type)
         self.set_caption(caption)
 
     def on_draw(self):
         self.clear()
-        spriteList = self.print_board()
+        spriteList = Util.print_board(self.board)
         for sprite in spriteList:
             sprite.draw()
     
@@ -135,7 +84,7 @@ class GameState(pyglet.window.Window):
     def on_mouse_release(self, x, y, button, modifiers):
         if self.flag == 'game_over':
             return
-        chosen_position = get_tile_by_click(x, y, self.board)
+        chosen_position = Util.get_tile_by_click(x, y, self.board)
         if self.player_to_place < self.num_players:
             if self.board[chosen_position[0]][chosen_position[1]][0] == None:
                 position = self.players[self.player_to_place].choose_starting_position(chosen_position) # choose starting position
@@ -146,7 +95,6 @@ class GameState(pyglet.window.Window):
             self.update_caption()
             if self.players[self.current_player].policy_type != "Human":
                 return
-            print("click on x:" + str(x) + " y:" + str(y))
             player = self.players[self.current_player]
             if player.player_number in self.losers:
                 self.current_player = (self.current_player + 1) % self.num_players
@@ -173,7 +121,8 @@ class GameState(pyglet.window.Window):
         self.board[old_position[0]][old_position[1]][0] = None
         self.board[new_position[0]][new_position[1]][0] = player_number
         self.player_positions[player_number] = new_position # update internally stored position
-        self.print_board()
+        Util.print_board(self.board)
+        print("{}:\n - Move from {} to {}".format(self.player_names[player_number], old_position, new_position))
         self.turn_type = 'build' # next turn type is build after a move
         self.check_for_game_over()
 
@@ -184,8 +133,9 @@ class GameState(pyglet.window.Window):
         :param build_position: [3x1] list of [y,x,z] coordinates representing the desired build location
         """
         self.board[build_position[0]][build_position[1]][1] = self.board[build_position[0]][build_position[1]][1] + 1
-        self.print_board()
+        Util.print_board(self.board)
         self.turn = (self.turn + 1) % self.num_players # switch to next player's turn after a build
+        print(" - Build on {}".format(build_position))
         self.turn_type = 'move' # next turn type is move after a build
         self.check_for_game_over()
     
@@ -202,24 +152,19 @@ class GameState(pyglet.window.Window):
                     self.flag = 'game_over'
                     self.winner = player_number
                     self.losers = self.player_set - {self.winner}
-                    self.set_caption("Player {} wins!".format(player_number))
+                    self.set_caption("{} wins by reaching the top!".format(self.player_names[player_number]))
+                    print("{} wins by reaching the top!".format(self.player_names[player_number]))
                     return
                 # check if a player doesn't have any valid moves (that player loses)
                 if not Util.get_move_action_space(self.board, position) or \
                    not Util.get_build_action_space(self.board, position):
 
                     self.losers.add(player_number)
-                    self.board[position[0]][position[1]][0] = None
-                    self.player_positions[player_number] = None
-
-                    # if every player but 1 has lost, game is now over
-                    if len(self.losers) == self.num_players - 1:
-                        self.flag = 'game_over'
-                        self.winner = (self.player_set - self.losers).pop() # use Set diff operation to find winner
-                        self.set_caption("Player {} wins!".format(player_number))
-                        return
-                    else:
-                        self.set_caption("Player {} loses!".format(player_number))
+                    self.flag = 'game_over'
+                    self.winner = (player_number + 1) % self.num_players
+                    self.set_caption("{} wins by KO!".format(self.player_names[self.winner]))
+                    print("{} wins by KO!".format(self.player_names[self.winner]))
+                    return
         return
     
 
@@ -228,7 +173,7 @@ class Player:
     Implements an Opponent to play Santorini against. Uses one of the various Agent implementations such as FS or
     MiniMax to generate moves.
     """
-    def __init__(self, config, policy_type="Random", player_number=0):
+    def __init__(self, config, policy_type="Human", player_number=0):
         self.policy_type = policy_type
         self.player_number = player_number
         print(policy_type)
@@ -291,7 +236,7 @@ def main():
         config['Game']['agent_1'] = str(args.blue_player)
     
     game = GameState(config=config)
-    pyglet.clock.schedule_interval(game.game_loop, 1/60.0)
+    pyglet.clock.schedule_interval(game.game_loop, 1/5.0)
     pyglet.app.run()
 
 if __name__ == '__main__':

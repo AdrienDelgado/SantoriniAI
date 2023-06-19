@@ -17,17 +17,7 @@ class MiniMaxAgent:
         self.beta = math.inf                        # min cutoff for max action
         self.player_number = player_number
         self.pi = None
-
-    def choose_starting_position(self, board, _):
-        """
-        Function to choose a starting position on the board. Is called once during Game.start_game()
-
-        :param board: GameState representation of the current game board. See class GameState
-        :return: starting_position: a [3x1] List of [x, y, z] coordinates representing starting position
-        """
-        avail = [[row, col] for row in range(len(board[0])) for col in range(len(board[:][0])) if board[row][col][0] is None]
-        position = random.choice(avail)
-        return [position[0], position[1], 0]
+        self.name = config['Game']['agent_{}_name'.format(player_number)]
 
     def transition(self, board, player_positions, action, player_number):
         """
@@ -58,7 +48,7 @@ class MiniMaxAgent:
 
     def evaluation_function(self, board, player_positions):
         """
-        DEPRECATED. Function to evaluate the value of a board based on heuristics ("expert" knowledge)
+        Function to evaluate the value of a board based on heuristics ("expert" knowledge)
         """
 
         return player_positions[self.player_number][2]
@@ -81,12 +71,21 @@ class MiniMaxAgent:
         """
 
         # end states
+        # reaching the top level
         if player_positions[agent][2] == 3:
             if agent == self.player_number:
                 return math.inf, None # this agent has won
             else:
                 return -math.inf, None  # another player has won
-
+            
+        # blocking the opponent
+        if len(Util.get_move_action_space(board, player_positions[agent])) == 0:
+            if agent == self.player_number:
+                return -math.inf, None # this agent has lost
+            else:
+                return math.inf, None  # another player has lost
+            
+        # if d_solve == 0, we have reached the max depth to look for
         if d_solve == 0:
             return self.evaluation_function(board, player_positions), None # return heuristic
 
