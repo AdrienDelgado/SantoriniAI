@@ -3,14 +3,9 @@ import ConfigHandler
 import Util
 
 import pyglet
-from pyglet.window import mouse
-from pyglet.graphics import Group
 
-from poubelle.FS import FSAgent
-from poubelle.Random import RandomAgent
 from MiniMax import MiniMaxAgent
 from HumanPlayer import HumanAgent
-from poubelle.NN import NNAgent
 
 #__________________________________
 building_pixel_row = [105, 216, 331, 446, 559]
@@ -51,11 +46,10 @@ class GameState(pyglet.window.Window):
         super().__init__()
 
         self.configuration = config
-        self.num_players = self.configuration.getint('Game', 'num_players')
         self.num_players = 2
 
         # players
-        self.players = [Player(config, policy_type=config['Game']['agent_{}'.format(i)], player_number=i) for i in range(config.getint('Game', 'num_players'))]
+        self.players = [Player(config, policy_type=config['Game']['agent_{}'.format(i)], player_number=i) for i in range(self.num_players)]
         self.player_set = set(range(self.num_players))
         self.player_positions = [None for _ in range(self.num_players)]
         self.winner = None
