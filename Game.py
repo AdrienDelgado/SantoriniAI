@@ -23,7 +23,6 @@ class GameState(pyglet.window.Window):
         self.player_set = set(range(self.num_players))
         self.player_positions = [None for _ in range(self.num_players)]
         self.winner = None
-        self.losers = set()
 
         # board
         self.board = [[[None, 0] for i in range(5)] for j in range(5)]
@@ -70,14 +69,12 @@ class GameState(pyglet.window.Window):
         if player.policy_type == "Human":
             return
         
-        if player.player_number in self.losers:
-            self.current_player = (self.current_player + 1) % self.num_players
+        if self.turn_type == "move":
+            player.move(self, 0)
         else:
-            if self.turn_type == "move":
-                player.move(self, 0)
-            else:
-                player.build(self, 0)
-                self.current_player = (self.current_player + 1) % self.num_players
+            player.build(self, 0)
+            self.current_player = (self.current_player + 1) % self.num_players
+            self.check_for_game_over()
 
         self.clear()
     
@@ -85,19 +82,21 @@ class GameState(pyglet.window.Window):
         if self.flag == 'game_over':
             return
         chosen_position = Util.get_tile_by_click(x, y, self.board)
+
+        # Initial phase to choose the player positions 
         if self.player_to_place < self.num_players:
             if self.board[chosen_position[0]][chosen_position[1]][0] == None:
                 position = self.players[self.player_to_place].choose_starting_position(chosen_position) # choose starting position
                 self.board[position[0]][position[1]][0] = self.player_to_place # update board
                 self.player_positions[self.player_to_place] = position # update internally stored position
                 self.player_to_place += 1
+        
+        # Otherwise normal movement and build
         else:
             self.update_caption()
             if self.players[self.current_player].policy_type != "Human":
                 return
             player = self.players[self.current_player]
-            if player.player_number in self.losers:
-                self.current_player = (self.current_player + 1) % self.num_players
             
             if self.turn_type == "move":
                 if Util.check_move_validity(self.board, self.player_positions[player.player_number], chosen_position):
@@ -106,6 +105,7 @@ class GameState(pyglet.window.Window):
                 if Util.check_build_validity(self.board, self.player_positions[player.player_number], chosen_position):
                     self.build_on_board(chosen_position)
                     self.current_player = (self.current_player + 1) % self.num_players
+                    self.check_for_game_over()
 
         self.clear()
 
@@ -137,7 +137,6 @@ class GameState(pyglet.window.Window):
         self.turn = (self.turn + 1) % self.num_players # switch to next player's turn after a build
         print(" - Build on {}".format(build_position))
         self.turn_type = 'move' # next turn type is move after a build
-        self.check_for_game_over()
     
     def check_for_game_over(self):
         """
@@ -146,25 +145,24 @@ class GameState(pyglet.window.Window):
         """
 
         for player_number, position in enumerate(self.player_positions):
-            if player_number not in self.losers:
-                # check if a player has reached a height of 3 (win condition)
-                if self.board[position[0]][position[1]][1] == 3:
-                    self.flag = 'game_over'
-                    self.winner = player_number
-                    self.losers = self.player_set - {self.winner}
-                    self.set_caption("{} wins by reaching the top!".format(self.player_names[player_number]))
-                    print("{} wins by reaching the top!".format(self.player_names[player_number]))
-                    return
-                # check if a player doesn't have any valid moves (that player loses)
-                if not Util.get_move_action_space(self.board, position) or \
-                   not Util.get_build_action_space(self.board, position):
+            # if player_number not in self.losers:
+            # check if a player has reached a height of 3 (win condition)
+            if self.board[position[0]][position[1]][1] == 3:
+                self.flag = 'game_over'
+                self.winner = player_number
+                self.set_caption("{} wins by reaching the top!".format(self.player_names[player_number]))
+                print("{} wins by reaching the top!".format(self.player_names[player_number]))
+                return
+            # check if a player doesn't have any valid moves (that player loses)
+            if not Util.get_move_action_space(self.board, position) and \
+                self.turn_type == "move" and \
+                self.current_player == player_number:
 
-                    self.losers.add(player_number)
-                    self.flag = 'game_over'
-                    self.winner = (player_number + 1) % self.num_players
-                    self.set_caption("{} wins by KO!".format(self.player_names[self.winner]))
-                    print("{} wins by KO!".format(self.player_names[self.winner]))
-                    return
+                self.flag = 'game_over'
+                self.winner = (player_number + 1) % self.num_players
+                self.set_caption("{} wins by KO!".format(self.player_names[self.winner]))
+                print("{} wins by KO!".format(self.player_names[self.winner]))
+                return
         return
     
 

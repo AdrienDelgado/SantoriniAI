@@ -50,9 +50,9 @@ class MiniMaxAgent:
         """
         Function to evaluate the value of a board based on heuristics ("expert" knowledge)
         """
+        your_player = self.player_number
 
-        return player_positions[self.player_number][2]
-        return 0 # Turning off heuristic score
+        return player_positions[your_player][2]
 
     def alphabeta(self, board, num_players, player_positions, alpha, beta, d_solve, agent, action_type):
         """
