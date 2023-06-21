@@ -41,6 +41,10 @@ def move_logic(board, position, action):
 
     return new_pos
 
+def check_pos_in_grid(board, pos):
+    if pos[0] < 0 or pos[0] >= len(board[:][0]) or pos[1] < 0 or pos[1] >= len(board[0][:]):
+        return False
+    return True
 
 def check_move_validity(board, start_pos, end_pos):
     """

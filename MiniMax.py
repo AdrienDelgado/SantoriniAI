@@ -3,6 +3,7 @@ import math
 import Util
 import random
 
+import EvalHelper
 
 class MiniMaxAgent:
     """
@@ -52,7 +53,7 @@ class MiniMaxAgent:
         """
         your_player = self.player_number
 
-        return player_positions[your_player][2]
+        return player_positions[your_player][2] - EvalHelper.distance_between_players(player_positions)
 
     def alphabeta(self, board, num_players, player_positions, alpha, beta, d_solve, agent, action_type):
         """
